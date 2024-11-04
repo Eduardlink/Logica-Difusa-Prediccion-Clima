@@ -1,0 +1,33 @@
+# Ignore Python bytecode and other temporary files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# Ignore environment folder (adjust to match your environment folder name)
+logica_difusa_env/
+
+# Ignore system files and settings
+.DS_Store
+Thumbs.db
+
+# Ignore VSCode settings (optional)
+.vscode/
+
+# Ignore virtual environment
+venv/
+env/
+*.env
+logica_difusa_env/*
+
+# Ignore libraries installed with pip
+*.egg-info/
+dist/
+build/
+
+
+
+# Ignore logs and other temporary files
+*.log
