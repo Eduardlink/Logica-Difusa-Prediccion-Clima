@@ -3,8 +3,6 @@ import matplotlib.pyplot as plt
 import streamlit as st
 from collections import Counter
 
-# --- Paso 1: Definir funciones de membresía manuales para cada variable ---
-
 # Membresía para Cloud Cover
 def cloud_cover_low(x):
     if x <= 0:
@@ -127,7 +125,7 @@ def temp_mean_high(x):
         return (x - 99) / 41
     return 1 if x > 140 else 0
 
-# --- Paso 2: Fuzzificación ---
+# --- Etapa 1: Fuzzificación ---
 def fuzzify_inputs(humidity, cloud_cover, pressure, precipitation, sunshine, temp_mean):
     def get_category(value, low_func, medium_func, high_func):
         memberships = {
@@ -135,7 +133,6 @@ def fuzzify_inputs(humidity, cloud_cover, pressure, precipitation, sunshine, tem
             1: medium_func(value),
             2: high_func(value)
         }
-        # Selecciona la categoría con el valor de membresía más alto
         return max(memberships, key=memberships.get)
     
     return {
@@ -147,13 +144,13 @@ def fuzzify_inputs(humidity, cloud_cover, pressure, precipitation, sunshine, tem
         "temp_mean_cat": get_category(temp_mean, temp_mean_low, temp_mean_medium, temp_mean_high)
     }
 
-# --- Paso 3: Cargar y aplicar reglas desde el archivo JSON ---
+# --- Etapa 2: Inferencia ---
 def load_rules(filename):
     with open(filename, "r") as file:
         rules = json.load(file)
     return rules
 
-def apply_rules(fuzzified_inputs, rules):
+def infer_consequent(fuzzified_inputs, rules):
     results = []
     for rule in rules:
         match = True
@@ -167,63 +164,97 @@ def apply_rules(fuzzified_inputs, rules):
             results.append(rule["consequent"]["value"])
     return results
 
-# --- Paso 4: Agregación ---
+# --- Etapa 3: Agregación ---
 def aggregate_results(results):
     if not results:
         return "No prediction"
+    
     counts = Counter(results)
-    return max(counts, key=counts.get)  # Predicción basada en la mayoría
+    predicted_clima = max(counts, key=counts.get)
+    return predicted_clima, results
 
+# --- Etapa 4: Defuzzificación ---
+clima_values = {
+    "Lluvioso": 20,
+    "Nublado": 50,
+    "Cálido y Húmedo": 80,
+    "Templado": 65,
+    "Frío Húmedo": 30,
+    "Lluvia Intensa": 10
+}
+
+def defuzzify_results(results):
+    if not results:
+        return None
+    
+    weighted_sum = sum(clima_values[clima] for clima in results)
+    total_weight = len(results)
+    crisp_value = weighted_sum / total_weight if total_weight > 0 else None
+    return crisp_value
+
+# --- Visualización de funciones de membresía ---
 # --- Paso 5: Visualización de funciones de membresía ---
 def plot_membership_functions():
     fig, axs = plt.subplots(2, 3, figsize=(18, 10))
-    x_vals = list(range(0, 101))
     
     # Humidity
-    axs[0, 0].plot(x_vals, [humidity_low(x) for x in x_vals], label="Low")
-    axs[0, 0].plot(x_vals, [humidity_medium(x) for x in x_vals], label="Medium")
-    axs[0, 0].plot(x_vals, [humidity_high(x) for x in x_vals], label="High")
+    x_vals_humidity = list(range(0, 101))
+    axs[0, 0].plot(x_vals_humidity, [humidity_low(x) for x in x_vals_humidity], label="Low")
+    axs[0, 0].plot(x_vals_humidity, [humidity_medium(x) for x in x_vals_humidity], label="Medium")
+    axs[0, 0].plot(x_vals_humidity, [humidity_high(x) for x in x_vals_humidity], label="High")
     axs[0, 0].set_title("Humidity")
+    axs[0, 0].set_xlim([0, 100])
+    axs[0, 0].set_ylim([0, 1.1])  # Ajuste para más espacio en y
     axs[0, 0].legend()
 
     # Cloud Cover
-    x_vals_cloud = list(range(0, 10))
+    x_vals_cloud = list(range(0, 11))
     axs[0, 1].plot(x_vals_cloud, [cloud_cover_low(x) for x in x_vals_cloud], label="Low")
     axs[0, 1].plot(x_vals_cloud, [cloud_cover_medium(x) for x in x_vals_cloud], label="Medium")
     axs[0, 1].plot(x_vals_cloud, [cloud_cover_high(x) for x in x_vals_cloud], label="High")
     axs[0, 1].set_title("Cloud Cover")
+    axs[0, 1].set_xlim([0, 10])
+    axs[0, 1].set_ylim([0, 1.1])  # Ajuste para más espacio en y
     axs[0, 1].legend()
 
     # Pressure
-    x_vals_pressure = list(range(950, 1050))
+    x_vals_pressure = list(range(950, 1051))
     axs[0, 2].plot(x_vals_pressure, [pressure_low(x) for x in x_vals_pressure], label="Low")
     axs[0, 2].plot(x_vals_pressure, [pressure_medium(x) for x in x_vals_pressure], label="Medium")
     axs[0, 2].plot(x_vals_pressure, [pressure_high(x) for x in x_vals_pressure], label="High")
     axs[0, 2].set_title("Pressure")
+    axs[0, 2].set_xlim([950, 1050])
+    axs[0, 2].set_ylim([0, 1.1])  # Ajuste para más espacio en y
     axs[0, 2].legend()
 
     # Precipitation
-    x_vals_precip = list(range(0, 300))
+    x_vals_precip = list(range(0, 301))
     axs[1, 0].plot(x_vals_precip, [precipitation_low(x) for x in x_vals_precip], label="Low")
     axs[1, 0].plot(x_vals_precip, [precipitation_medium(x) for x in x_vals_precip], label="Medium")
     axs[1, 0].plot(x_vals_precip, [precipitation_high(x) for x in x_vals_precip], label="High")
     axs[1, 0].set_title("Precipitation")
+    axs[1, 0].set_xlim([0, 300])
+    axs[1, 0].set_ylim([0, 1.1])  # Ajuste para más espacio en y
     axs[1, 0].legend()
 
     # Sunshine
-    x_vals_sunshine = list(range(0, 150))
+    x_vals_sunshine = list(range(0, 151))
     axs[1, 1].plot(x_vals_sunshine, [sunshine_low(x) for x in x_vals_sunshine], label="Low")
     axs[1, 1].plot(x_vals_sunshine, [sunshine_medium(x) for x in x_vals_sunshine], label="Medium")
     axs[1, 1].plot(x_vals_sunshine, [sunshine_high(x) for x in x_vals_sunshine], label="High")
     axs[1, 1].set_title("Sunshine")
+    axs[1, 1].set_xlim([0, 150])
+    axs[1, 1].set_ylim([0, 1.1])  # Ajuste para más espacio en y
     axs[1, 1].legend()
 
     # Temp Mean
-    x_vals_temp = list(range(-30, 50))
+    x_vals_temp = list(range(-30, 51))
     axs[1, 2].plot(x_vals_temp, [temp_mean_low(x) for x in x_vals_temp], label="Low")
     axs[1, 2].plot(x_vals_temp, [temp_mean_medium(x) for x in x_vals_temp], label="Medium")
     axs[1, 2].plot(x_vals_temp, [temp_mean_high(x) for x in x_vals_temp], label="High")
     axs[1, 2].set_title("Temp Mean")
+    axs[1, 2].set_xlim([-30, 50])
+    axs[1, 2].set_ylim([0, 1.1])  # Ajuste para más espacio en y
     axs[1, 2].legend()
     
     for ax in axs.flat:
@@ -232,7 +263,8 @@ def plot_membership_functions():
     plt.tight_layout()
     st.pyplot(fig)
 
-# --- Paso 6: Predicción interactiva con sliders usando Streamlit ---
+
+# --- Interfaz interactiva de Streamlit ---
 def interactive_prediction(rules):
     st.title("Sistema de Lógica Difusa para Predicción de Clima")
 
@@ -244,19 +276,23 @@ def interactive_prediction(rules):
     sunshine = st.slider("Sunshine", 0, 150)
     temp_mean = st.slider("Temp Mean", -30, 50)
 
-    # Fuzzificación de las entradas
+    # Etapa 1: Fuzzificación
     fuzzified_inputs = fuzzify_inputs(humidity, cloud_cover, pressure, precipitation, sunshine, temp_mean)
-    st.write("Fuzzified Inputs:", fuzzified_inputs)  # Mostrar entradas fuzzificadas para depuración
-    
-    # Aplicar inferencia de reglas
-    results = apply_rules(fuzzified_inputs, rules)
-    st.write("Matching Results:", results)  # Mostrar resultados de coincidencias para depuración
-    
-    # Agregación y resultado final
-    predicted_clima = aggregate_results(results)
-    st.write(f"Predicción de Clima: {predicted_clima}")
+    st.write("Fuzzificación:", fuzzified_inputs)
 
-    # Mostrar gráficas de funciones de membresía
+    # Etapa 2: Inferencia
+    results = infer_consequent(fuzzified_inputs, rules)
+    st.write("Resultados de Inferencia:", results)
+    # Etapa 3: Agregación
+    predicted_clima, all_results = aggregate_results(results)
+    st.write("Resultado de Agregación (Predicción de Clima):", predicted_clima)
+    st.write("Resultados de todas las reglas aplicadas:", all_results)
+
+    # Etapa 4: Defuzzificación
+    crisp_value = defuzzify_results(all_results)
+    st.write(f"Valor Defuzzificado (Crisp Value): {crisp_value}")
+
+    # Visualizar las funciones de membresía
     st.write("Funciones de Membresía")
     plot_membership_functions()
 

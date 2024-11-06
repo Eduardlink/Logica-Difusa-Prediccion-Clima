@@ -110,7 +110,7 @@ def apply_rules(rules, df):
                 predicted = True
                 break
         if not predicted:
-            predictions.append(None)  # Sin predicción
+            predictions.append(None)
     return predictions
 
 # Aplicar las reglas al dataset
