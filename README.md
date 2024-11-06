@@ -55,6 +55,7 @@ pip install numpy
 pip install streamlit
 pip install scikit-fuzzy
 pip install matplotlib
+pip install networkx
 ```
 
 Alternativamente, si tienes un archivo `requirements.txt`, puedes instalar todas las dependencias con:
